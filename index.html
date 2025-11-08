@@ -725,10 +725,163 @@ Series de Fourier"></textarea>
             examNotifications: true
         };
         let tempImages = [];
+        
+        // Configuración de base de datos
+        const USE_DATABASE = true; // Cambiar a true cuando tengas la base de datos configurada
+        const DB_ENDPOINT = '/.netlify/functions/db'; // Endpoint para las funciones de Netlify
+
+        // Funciones de base de datos
+        async function dbQuery(query, params = []) {
+            if (!USE_DATABASE) {
+                console.log('Base de datos deshabilitada, usando localStorage');
+                return null;
+            }
+            
+            try {
+                const response = await fetch(DB_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, params })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Error en la consulta a la base de datos');
+                }
+                
+                return await response.json();
+            } catch (error) {
+                console.error('Error de base de datos:', error);
+                alert('Error al conectar con la base de datos. Usando almacenamiento local.');
+                return null;
+            }
+        }
+
+        async function syncToDatabase() {
+            if (!USE_DATABASE) return;
+            
+            try {
+                // Sincronizar categorías
+                for (const cat of categories) {
+                    await dbQuery(
+                        `INSERT INTO categories (id, name, description, created_at) 
+                         VALUES ($1, $2, $3, $4) 
+                         ON CONFLICT (id) DO UPDATE 
+                         SET name = $2, description = $3`,
+                        [cat.id, cat.name, cat.description || '', new Date(cat.id)]
+                    );
+                }
+                
+                // Sincronizar tareas
+                for (const task of tasks) {
+                    await dbQuery(
+                        `INSERT INTO tasks (id, category_id, title, description, deadline, completed, created_at, images) 
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+                         ON CONFLICT (id) DO UPDATE 
+                         SET title = $3, description = $4, deadline = $5, completed = $6, images = $8`,
+                        [
+                            task.id, 
+                            task.category, 
+                            task.title, 
+                            task.description || '', 
+                            task.deadline ? new Date(task.deadline) : null,
+                            task.completed,
+                            new Date(task.createdAt),
+                            JSON.stringify(task.images || [])
+                        ]
+                    );
+                }
+                
+                // Sincronizar exámenes
+                for (const exam of exams) {
+                    await dbQuery(
+                        `INSERT INTO exams (id, name, category, date, topics, notes, created_at, notified_3days, notified_day) 
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+                         ON CONFLICT (id) DO UPDATE 
+                         SET name = $2, category = $3, date = $4, topics = $5, notes = $6, notified_3days = $8, notified_day = $9`,
+                        [
+                            exam.id,
+                            exam.name,
+                            exam.category,
+                            new Date(exam.date),
+                            JSON.stringify(exam.topics),
+                            exam.notes || '',
+                            new Date(exam.createdAt),
+                            exam.notified3Days || false,
+                            exam.notifiedDay || false
+                        ]
+                    );
+                }
+                
+                console.log('Datos sincronizados con la base de datos');
+            } catch (error) {
+                console.error('Error al sincronizar:', error);
+            }
+        }
+
+        async function loadFromDatabase() {
+            if (!USE_DATABASE) {
+                loadData();
+                return;
+            }
+            
+            try {
+                // Cargar categorías
+                const catsResult = await dbQuery('SELECT * FROM categories ORDER BY created_at DESC');
+                if (catsResult && catsResult.rows) {
+                    categories = catsResult.rows.map(row => ({
+                        id: row.id,
+                        name: row.name,
+                        description: row.description
+                    }));
+                }
+                
+                // Cargar tareas
+                const tasksResult = await dbQuery('SELECT * FROM tasks ORDER BY created_at DESC');
+                if (tasksResult && tasksResult.rows) {
+                    tasks = tasksResult.rows.map(row => ({
+                        id: row.id,
+                        category: row.category_id,
+                        title: row.title,
+                        description: row.description,
+                        deadline: row.deadline ? new Date(row.deadline).getTime() : null,
+                        completed: row.completed,
+                        createdAt: new Date(row.created_at).getTime(),
+                        images: row.images ? JSON.parse(row.images) : []
+                    }));
+                }
+                
+                // Cargar exámenes
+                const examsResult = await dbQuery('SELECT * FROM exams ORDER BY date ASC');
+                if (examsResult && examsResult.rows) {
+                    exams = examsResult.rows.map(row => ({
+                        id: row.id,
+                        name: row.name,
+                        category: row.category,
+                        date: new Date(row.date).getTime(),
+                        topics: JSON.parse(row.topics),
+                        notes: row.notes,
+                        createdAt: new Date(row.created_at).getTime(),
+                        notified3Days: row.notified_3days,
+                        notifiedDay: row.notified_day
+                    }));
+                }
+                
+                // Cargar configuración
+                const settingsResult = await dbQuery('SELECT * FROM settings WHERE id = 1');
+                if (settingsResult && settingsResult.rows && settingsResult.rows.length > 0) {
+                    notificationSettings = JSON.parse(settingsResult.rows[0].data);
+                }
+                
+                console.log('Datos cargados desde la base de datos');
+            } catch (error) {
+                console.error('Error al cargar desde base de datos:', error);
+                loadData(); // Fallback a localStorage
+            }
+        }
 
         // Inicializar
-        function init() {
-            loadData();
+        async function init() {
+            await loadFromDatabase();
             renderCategories();
             updateCategorySelect();
             requestNotificationPermission();
@@ -743,6 +896,11 @@ Series de Fourier"></textarea>
             localStorage.setItem('tasks', JSON.stringify(tasks));
             localStorage.setItem('exams', JSON.stringify(exams));
             localStorage.setItem('notificationSettings', JSON.stringify(notificationSettings));
+            
+            // Sincronizar con base de datos en segundo plano
+            if (USE_DATABASE) {
+                syncToDatabase().catch(err => console.error('Error al sincronizar:', err));
+            }
         }
 
         function loadData() {
