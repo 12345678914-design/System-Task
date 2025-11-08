@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Tareas y Exámenes</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 2.5em;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #764ba2;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #63408a;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(118, 75, 162, 0.4);
+        }
+
+        .btn-exam {
+            background: #f093fb;
+            color: white;
+        }
+
+        .btn-exam:hover {
+            background: #e67af0;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(240, 147, 251, 0.4);
+        }
+
+        .view {
+            display: none;
+        }
+
+        .view.active {
+            display: block;
+        }
+
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .category-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 25px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: white;
+        }
+
+        .category-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .category-card h3 {
+            margin-bottom: 10px;
+            font-size: 1.5em;
+        }
+
+        .category-card p {
+            opacity: 0.9;
+        }
+
+        .exam-alert {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .exam-alert h3 {
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+
+        .exam-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .exam-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            padding: 20px;
+            border-radius: 12px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .exam-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        .exam-card.upcoming {
+            background: linear-gradient(135deg, #ffa751 0%, #ffe259 100%);
+            color: #333;
+        }
+
+        .exam-card h3 {
+            margin-bottom: 10px;
+        }
+
+        .exam-date {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+
+        .exam-topics {
+            font-size: 0.85em;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .task-list {
+            margin-top: 20px;
+        }
+
+        .task-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-left: 4px solid #667eea;
+        }
+
+        .task-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .task-item.completed {
+            opacity: 0.6;
+            text-decoration: line-through;
+            border-left-color: #28a745;
+        }
+
+        .task-item.overdue {
+            border-left-color: #dc3545;
+        }
+
+        .task-info {
+            flex: 1;
+        }
+
+        .task-title {
+            font-weight: 600;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+
+        .task-deadline {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 14px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-content h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            max-width: 350px;
+            z-index: 2000;
+            animation: slideIn 0.3s;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+            }
+            to {
+                transform: translateX(0);
+            }
+        }
+
+        .notification-header {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .back-btn {
+            margin-bottom: 20px;
+        }
+
+        .keyboard-hint {
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: #856404;
+        }
+
+        .task-details {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .detail-row {
+            margin-bottom: 15px;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .completion-screen {
+            text-align: center;
+            padding: 40px;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .completion-screen .trophy {
+            font-size: 120px;
+            margin-bottom: 20px;
+            animation: bounce 1s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .completion-screen h2 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 15px;
+        }
+
+        .completion-screen p {
+            font-size: 1.2em;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .file-upload {
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-upload:hover {
+            background: #f8f9fa;
+            border-color: #764ba2;
+        }
+
+        .file-upload input {
+            display: none;
+        }
+
+        .image-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .image-preview-item {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #e9ecef;
+        }
+
+        .image-preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .image-preview-item .remove-img {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .task-images {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .task-image {
+            width: 150px;
+            height: 150px;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .task-image:hover {
+            transform: scale(1.05);
+        }
+
+        .task-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .image-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+        }
+
+        .image-modal.active {
+            display: flex;
+        }
+
+        .image-modal img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 10px;
+        }
+
+        .image-modal .close-image {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .topics-list {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 5px;
+        }
+
+        .topic-item {
+            padding: 5px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .topic-item:last-child {
+            border-bottom: none;
+        }
+
+        .countdown {
+            font-weight: bold;
+            color: #f5576c;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📋 Gestor de Tareas y Exámenes</h1>
+
+        <!-- Vista Principal -->
+        <div id="mainView" class="view active">
+            <div id="upcomingExamsAlert"></div>
+            
+            <div class="controls">
+                <button class="btn btn-primary" onclick="showModal('categoryModal')">➕ Nueva Categoría</button>
+                <button class="btn btn-secondary" onclick="showModal('taskModal')">✏️ Nueva Tarea</button>
+                <button class="btn btn-exam" onclick="showModal('examModal')">📚 Nuevo Examen</button>
+                <button class="btn btn-secondary" onclick="showView('examsView')">📅 Ver Exámenes</button>
+                <button class="btn btn-secondary" onclick="showModal('notificationModal')">🔔 Notificaciones</button>
+            </div>
+
+            <div class="categories-grid" id="categoriesGrid"></div>
+        </div>
+
+        <!-- Vista de Exámenes -->
+        <div id="examsView" class="view">
+            <button class="btn btn-secondary back-btn" onclick="showView('mainView')">← Volver</button>
+            <h2>📚 Mis Exámenes</h2>
+            <div class="exam-list" id="examList"></div>
+        </div>
+
+        <!-- Vista de Categoría -->
+        <div id="categoryView" class="view">
+            <button class="btn btn-secondary back-btn" onclick="showView('mainView')">← Volver</button>
+            <div class="keyboard-hint">
+                💡 Presiona <strong>ESPACIO</strong> para marcar la primera tarea pendiente como completada
+            </div>
+            <h2 id="categoryTitle"></h2>
+            <div id="completionScreen"></div>
+            <div class="task-list" id="taskList"></div>
+        </div>
+
+        <!-- Vista de Detalle de Tarea -->
+        <div id="taskDetailView" class="view">
+            <button class="btn btn-secondary back-btn" onclick="backToCategory()">← Volver</button>
+            <div id="taskDetailContent"></div>
+        </div>
+
+        <!-- Vista de Detalle de Examen -->
+        <div id="examDetailView" class="view">
+            <button class="btn btn-secondary back-btn" onclick="showView('examsView')">← Volver</button>
+            <div id="examDetailContent"></div>
+        </div>
+    </div>
+
+    <!-- Modal Nueva Categoría -->
+    <div id="categoryModal" class="modal">
+        <div class="modal-content">
+            <h2>Nueva Categoría</h2>
+            <div class="form-group">
+                <label>Nombre de la Categoría:</label>
+                <input type="text" id="categoryName" placeholder="Ej: Trabajo, Personal, Hogar...">
+            </div>
+            <div class="form-group">
+                <label>Descripción:</label>
+                <textarea id="categoryDesc" placeholder="Descripción opcional"></textarea>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-primary" onclick="createCategory()">Crear</button>
+                <button class="btn btn-secondary" onclick="closeModal('categoryModal')">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nueva Tarea -->
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <h2>Nueva Tarea</h2>
+            <div class="form-group">
+                <label>Categoría:</label>
+                <select id="taskCategory"></select>
+            </div>
+            <div class="form-group">
+                <label>Título de la Tarea:</label>
+                <input type="text" id="taskTitle" placeholder="¿Qué necesitas hacer?">
+            </div>
+            <div class="form-group">
+                <label>Descripción:</label>
+                <textarea id="taskDesc" placeholder="Detalles de la tarea..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Fecha Límite:</label>
+                <input type="datetime-local" id="taskDeadline">
+            </div>
+            <div class="form-group">
+                <label>Imágenes:</label>
+                <div class="file-upload" onclick="document.getElementById('taskImages').click()">
+                    <p>📷 Click para adjuntar imágenes</p>
+                    <input type="file" id="taskImages" accept="image/*" multiple onchange="handleImageUpload(event)">
+                </div>
+                <div class="image-preview" id="imagePreview"></div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-primary" onclick="createTask()">Crear</button>
+                <button class="btn btn-secondary" onclick="closeModal('taskModal')">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nuevo Examen -->
+    <div id="examModal" class="modal">
+        <div class="modal-content">
+            <h2>📚 Registrar Examen</h2>
+            <div class="form-group">
+                <label>Nombre del Examen:</label>
+                <input type="text" id="examName" placeholder="Ej: Examen Final de Matemáticas">
+            </div>
+            <div class="form-group">
+                <label>Categoría/Materia:</label>
+                <input type="text" id="examCategory" placeholder="Ej: Matemáticas, Historia, Programación">
+            </div>
+            <div class="form-group">
+                <label>Fecha del Examen:</label>
+                <input type="datetime-local" id="examDate">
+            </div>
+            <div class="form-group">
+                <label>Temas a Estudiar (uno por línea):</label>
+                <textarea id="examTopics" placeholder="Ej:
+Ecuaciones diferenciales
+Integrales múltiples
+Series de Fourier"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Notas adicionales:</label>
+                <textarea id="examNotes" placeholder="Información extra sobre el examen..."></textarea>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-exam" onclick="createExam()">Registrar Examen</button>
+                <button class="btn btn-secondary" onclick="closeModal('examModal')">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Configuración de Notificaciones -->
+    <div id="notificationModal" class="modal">
+        <div class="modal-content">
+            <h2>Configuración de Notificaciones</h2>
+            <div class="form-group">
+                <label>Notificar tareas cada:</label>
+                <input type="number" id="notificationHours" min="1" value="2" style="width: 100px;"> horas
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="enableNotifications" checked> Activar notificaciones de tareas
+                </label>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="enableExamNotifications" checked> Activar recordatorios de exámenes
+                </label>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-primary" onclick="saveNotificationSettings()">Guardar</button>
+                <button class="btn btn-secondary" onclick="closeModal('notificationModal')">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para ver imagen completa -->
+    <div id="imageModal" class="image-modal">
+        <button class="close-image" onclick="closeImageModal()">×</button>
+        <img id="modalImage" src="" alt="Imagen completa">
+    </div>
+
+    <script>
+        let categories = [];
+        let tasks = [];
+        let exams = [];
+        let currentCategory = null;
+        let notificationInterval = null;
+        let examCheckInterval = null;
+        let notificationSettings = {
+            enabled: true,
+            hours: 2,
+            examNotifications: true
+        };
+        let tempImages = [];
+
+        // Inicializar
+        function init() {
+            loadData();
+            renderCategories();
+            updateCategorySelect();
+            requestNotificationPermission();
+            setupNotifications();
+            setupKeyboardListener();
+            checkUpcomingExams();
+        }
+
+        // Guardar y cargar datos
+        function saveData() {
+            localStorage.setItem('categories', JSON.stringify(categories));
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            localStorage.setItem('exams', JSON.stringify(exams));
+            localStorage.setItem('notificationSettings', JSON.stringify(notificationSettings));
+        }
+
+        function loadData() {
+            const savedCategories = localStorage.getItem('categories');
+            const savedTasks = localStorage.getItem('tasks');
+            const savedExams = localStorage.getItem('exams');
+            const savedSettings = localStorage.getItem('notificationSettings');
+            
+            if (savedCategories) categories = JSON.parse(savedCategories);
+            if (savedTasks) tasks = JSON.parse(savedTasks);
+            if (savedExams) exams = JSON.parse(savedExams);
+            if (savedSettings) notificationSettings = JSON.parse(savedSettings);
+        }
+
+        // Listener de teclado
+        function setupKeyboardListener() {
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && document.getElementById('categoryView').classList.contains('active')) {
+                    e.preventDefault();
+                    completeFirstPendingTask();
+                }
+            });
+        }
+
+        // Completar primera tarea pendiente
+        function completeFirstPendingTask() {
+            const pendingTasks = tasks.filter(t => t.category === currentCategory && !t.completed);
+            if (pendingTasks.length > 0) {
+                toggleTaskComplete(pendingTasks[0].id);
+            }
+        }
+
+        // Manejo de imágenes
+        function handleImageUpload(event) {
+            const files = event.target.files;
+            tempImages = [];
+            
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    tempImages.push(e.target.result);
+                    renderImagePreview();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderImagePreview() {
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = tempImages.map((img, index) => `
+                <div class="image-preview-item">
+                    <img src="${img}" alt="Preview">
+                    <button class="remove-img" onclick="removePreviewImage(${index})">×</button>
+                </div>
+            `).join('');
+        }
+
+        function removePreviewImage(index) {
+            tempImages.splice(index, 1);
+            renderImagePreview();
+        }
+
+        function showImageModal(imageSrc) {
+            document.getElementById('modalImage').src = imageSrc;
+            document.getElementById('imageModal').classList.add('active');
+        }
+
+        function closeImageModal() {
+            document.getElementById('imageModal').classList.remove('active');
+        }
+
+        // Categorías
+        function createCategory() {
+            const name = document.getElementById('categoryName').value.trim();
+            const desc = document.getElementById('categoryDesc').value.trim();
+            
+            if (!name) {
+                alert('Por favor ingresa un nombre para la categoría');
+                return;
+            }
+
+            categories.push({
+                id: Date.now(),
+                name,
+                description: desc
+            });
+
+            saveData();
+            renderCategories();
+            updateCategorySelect();
+            closeModal('categoryModal');
+            document.getElementById('categoryName').value = '';
+            document.getElementById('categoryDesc').value = '';
+        }
+
+        function renderCategories() {
+            const grid = document.getElementById('categoriesGrid');
+            grid.innerHTML = categories.map(cat => {
+                const taskCount = tasks.filter(t => t.category === cat.id).length;
+                const pendingCount = tasks.filter(t => t.category === cat.id && !t.completed).length;
+                
+                return `
+                    <div class="category-card" onclick="openCategory(${cat.id})">
+                        <h3>${cat.name}</h3>
+                        <p>${cat.description || 'Sin descripción'}</p>
+                        <p style="margin-top: 15px; font-size: 0.9em;">
+                            📊 ${taskCount} tareas | ✅ ${pendingCount} pendientes
+                        </p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openCategory(categoryId) {
+            currentCategory = categoryId;
+            const category = categories.find(c => c.id === categoryId);
+            document.getElementById('categoryTitle').textContent = category.name;
+            renderTasks();
+            checkCompletion();
+            showView('categoryView');
+        }
+
+        function checkCompletion() {
+            const categoryTasks = tasks.filter(t => t.category === currentCategory);
+            const pendingTasks = categoryTasks.filter(t => !t.completed);
+            const completionScreen = document.getElementById('completionScreen');
+            
+            if (categoryTasks.length > 0 && pendingTasks.length === 0) {
+                const category = categories.find(c => c.id === currentCategory);
+                completionScreen.innerHTML = `
+                    <div class="completion-screen">
+                        <div class="trophy">🏆</div>
+                        <h2>¡Felicidades!</h2>
+                        <p>Has completado todas las tareas de <strong>${category.name}</strong></p>
+                        <button class="btn btn-primary" onclick="showView('mainView')">Volver al inicio</button>
+                    </div>
+                `;
+            } else {
+                completionScreen.innerHTML = '';
+            }
+        }
+
+        // Tareas
+        function createTask() {
+            const category = parseInt(document.getElementById('taskCategory').value);
+            const title = document.getElementById('taskTitle').value.trim();
+            const desc = document.getElementById('taskDesc').value.trim();
+            const deadline = document.getElementById('taskDeadline').value;
+
+            if (!category || !title) {
+                alert('Por favor completa los campos requeridos');
+                return;
+            }
+
+            tasks.push({
+                id: Date.now(),
+                category,
+                title,
+                description: desc,
+                deadline: deadline ? new Date(deadline).getTime() : null,
+                completed: false,
+                createdAt: Date.now(),
+                images: [...tempImages]
+            });
+
+            saveData();
+            renderCategories();
+            closeModal('taskModal');
+            
+            document.getElementById('taskTitle').value = '';
+            document.getElementById('taskDesc').value = '';
+            document.getElementById('taskDeadline').value = '';
+            document.getElementById('imagePreview').innerHTML = '';
+            tempImages = [];
+        }
+
+        function renderTasks() {
+            const list = document.getElementById('taskList');
+            const categoryTasks = tasks
+                .filter(t => t.category === currentCategory)
+                .sort((a, b) => {
+                    if (a.completed !== b.completed) return a.completed ? 1 : -1;
+                    if (a.deadline && b.deadline) return a.deadline - b.deadline;
+                    return b.createdAt - a.createdAt;
+                });
+
+            list.innerHTML = categoryTasks.map(task => {
+                let deadlineText = '';
+                let overdueClass = '';
+                
+                if (task.deadline) {
+                    const deadline = new Date(task.deadline);
+                    const now = new Date();
+                    const isOverdue = deadline < now && !task.completed;
+                    
+                    deadlineText = `📅 ${deadline.toLocaleDateString()} ${deadline.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+                    overdueClass = isOverdue ? 'overdue' : '';
+                }
+
+                const imageIndicator = task.images && task.images.length > 0 ? ` 📷(${task.images.length})` : '';
+
+                return `
+                    <div class="task-item ${task.completed ? 'completed' : ''} ${overdueClass}" onclick="showTaskDetail(${task.id})">
+                        <div class="task-info">
+                            <div class="task-title">${task.completed ? '✅ ' : ''}${task.title}${imageIndicator}</div>
+                            ${deadlineText ? `<div class="task-deadline">${deadlineText}</div>` : ''}
+                        </div>
+                        <div class="task-actions">
+                            <button class="btn btn-small btn-primary" onclick="event.stopPropagation(); toggleTaskComplete(${task.id})">
+                                ${task.completed ? '↩️' : '✓'}
+                            </button>
+                            <button class="btn btn-small btn-secondary" onclick="event.stopPropagation(); deleteTask(${task.id})">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function showTaskDetail(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            const category = categories.find(c => c.id === task.category);
+            
+            let imagesHTML = '';
+            if (task.images && task.images.length > 0) {
+                imagesHTML = `
+                    <div class="detail-row">
+                        <div class="detail-label">Imágenes:</div>
+                        <div class="task-images">
+                            ${task.images.map(img => `
+                                <div class="task-image" onclick="showImageModal('${img}')">
+                                    <img src="${img}" alt="Imagen de tarea">
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            const content = `
+                <h2>${task.title}</h2>
+                <div class="task-details">
+                    <div class="detail-row">
+                        <div class="detail-label">Categoría:</div>
+                        <div>${category.name}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Estado:</div>
+                        <div>${task.completed ? '✅ Completada' : '⏳ Pendiente'}</div>
+                    </div>
+                    ${task.deadline ? `
+                        <div class="detail-row">
+                            <div class="detail-label">Fecha Límite:</div>
+                            <div>${new Date(task.deadline).toLocaleString()}</div>
+                        </div>
+                    ` : ''}
+                    <div class="detail-row">
+                        <div class="detail-label">Descripción:</div>
+                        <div>${task.description || 'Sin descripción'}</div>
+                    </div>
+                    ${imagesHTML}
+                    <div class="detail-row">
+                        <div class="detail-label">Creada:</div>
+                        <div>${new Date(task.createdAt).toLocaleString()}</div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('taskDetailContent').innerHTML = content;
+            showView('taskDetailView');
+        }
+
+        function toggleTaskComplete(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            const wasCompleted = task.completed;
+            task.completed = !task.completed;
+            
+            if (!wasCompleted && task.completed && Notification.permission === 'granted') {
+                new Notification('✅ Tarea Completada', {
+                    body: `"${task.title}" ha sido marcada como completada.`,
+                    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">✅</text></svg>',
+                });
+            }
+            
+            saveData();
+            renderTasks();
+            renderCategories();
+            checkCompletion();
+        }
+
+        function deleteTask(taskId) {
+            if (confirm('¿Estás seguro de eliminar esta tarea?')) {
+                tasks = tasks.filter(t => t.id !== taskId);
+                saveData();
+                renderTasks();
+                renderCategories();
+                checkCompletion();
+            }
+        }
+
+        // EXÁMENES
+        function createExam() {
+            const name = document.getElementById('examName').value.trim();
+            const category = document.getElementById('examCategory').value.trim();
+            const date = document.getElementById('examDate').value;
+            const topicsText = document.getElementById('examTopics').value.trim();
+            const notes = document.getElementById('examNotes').value.trim();
+
+            if (!name || !category || !date) {
+                alert('Por favor completa los campos obligatorios (nombre, categoría y fecha)');
+                return;
+            }
+
+            const topics = topicsText.split('\n').filter(t => t.trim() !== '');
+
+            exams.push({
+                id: Date.now(),
+                name,
+                category,
+                date: new Date(date).getTime(),
+                topics,
+                notes,
+                createdAt: Date.now(),
+                notified3Days: false,
+                notifiedDay: false
+            });
+
+            saveData();
+            renderExams();
+            checkUpcomingExams();
+            closeModal('examModal');
+            
+            document.getElementById('examName').value = '';
+            document.getElementById('examCategory').value = '';
+            document.getElementById('examDate').value = '';
+            document.getElementById('examTopics').value = '';
+            document.getElementById('examNotes').value = '';
+
+            if (Notification.permission === 'granted') {
+                new Notification('📚 Examen Registrado', {
+                    body: `${name} - ${category}`,
+                    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">📚</text></svg>',
+                });
+            }
+        }
+
+        function renderExams() {
+            const list = document.getElementById('examList');
+            const now = Date.now();
+            
+            const sortedExams = [...exams].sort((a, b) => a.date - b.date);
+
+            if (sortedExams.length === 0) {
+                list.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">No hay exámenes registrados</p>';
+                return;
+            }
+
+            list.innerHTML = sortedExams.map(exam => {
+                const examDate = new Date(exam.date);
+                const daysUntil = Math.ceil((exam.date - now) / (1000 * 60 * 60 * 24));
+                const isPast = exam.date < now;
+                const isUpcoming = daysUntil <= 3 && daysUntil >= 0;
+
+                let statusText = '';
+                let cardClass = '';
+
+                if (isPast) {
+                    statusText = '✅ Finalizado';
+                } else if (isUpcoming) {
+                    statusText = `⚠️ ¡En ${daysUntil} día(s)!`;
+                    cardClass = 'upcoming';
+                } else {
+                    statusText = `📅 En ${daysUntil} días`;
+                }
+
+                return `
+                    <div class="exam-card ${cardClass}" onclick="showExamDetail(${exam.id})">
+                        <h3>${exam.name}</h3>
+                        <div style="font-size: 0.9em; margin-bottom: 10px;">📖 ${exam.category}</div>
+                        <div class="exam-date">
+                            ${examDate.toLocaleDateString()} ${examDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        </div>
+                        <div class="countdown">${statusText}</div>
+                        ${exam.topics.length > 0 ? `<div class="exam-topics">📝 ${exam.topics.length} tema(s) a estudiar</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function showExamDetail(examId) {
+            const exam = exams.find(e => e.id === examId);
+            const examDate = new Date(exam.date);
+            const now = Date.now();
+            const daysUntil = Math.ceil((exam.date - now) / (1000 * 60 * 60 * 24));
+            const isPast = exam.date < now;
+
+            let topicsHTML = '';
+            if (exam.topics.length > 0) {
+                topicsHTML = `
+                    <div class="detail-row">
+                        <div class="detail-label">Temas a Estudiar:</div>
+                        <div class="topics-list">
+                            ${exam.topics.map((topic, i) => `
+                                <div class="topic-item">✓ ${topic}</div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            const content = `
+                <h2>${exam.name}</h2>
+                <div class="task-details">
+                    <div class="detail-row">
+                        <div class="detail-label">Categoría/Materia:</div>
+                        <div>📖 ${exam.category}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Fecha del Examen:</div>
+                        <div>📅 ${examDate.toLocaleString()}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Estado:</div>
+                        <div class="countdown">
+                            ${isPast ? '✅ Finalizado' : `⏰ Faltan ${daysUntil} día(s)`}
+                        </div>
+                    </div>
+                    ${topicsHTML}
+                    ${exam.notes ? `
+                        <div class="detail-row">
+                            <div class="detail-label">Notas:</div>
+                            <div>${exam.notes}</div>
+                        </div>
+                    ` : ''}
+                    <div class="detail-row">
+                        <div class="detail-label">Registrado:</div>
+                        <div>${new Date(exam.createdAt).toLocaleString()}</div>
+                    </div>
+                </div>
+                <div style="margin-top: 20px; display: flex; gap: 10px;">
+                    <button class="btn btn-secondary" onclick="deleteExam(${exam.id})">🗑️ Eliminar Examen</button>
+                </div>
+            `;
+            
+            document.getElementById('examDetailContent').innerHTML = content;
+            showView('examDetailView');
+        }
+
+        function deleteExam(examId) {
+            if (confirm('¿Estás seguro de eliminar este examen?')) {
+                exams = exams.filter(e => e.id !== examId);
+                saveData();
+                renderExams();
+                checkUpcomingExams();
+                showView('examsView');
+            }
+        }
+
+        function checkUpcomingExams() {
+            const now = Date.now();
+            const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+            const oneDayMs = 24 * 60 * 60 * 1000;
+            
+            const upcomingExams = exams.filter(exam => {
+                const timeUntil = exam.date - now;
+                return timeUntil > 0 && timeUntil <= threeDaysMs;
+            });
+
+            // Mostrar alerta en la página principal
+            const alertDiv = document.getElementById('upcomingExamsAlert');
+            if (upcomingExams.length > 0) {
+                alertDiv.innerHTML = upcomingExams.map(exam => {
+                    const daysUntil = Math.ceil((exam.date - now) / (1000 * 60 * 60 * 24));
+                    const topicsList = exam.topics.length > 0 
+                        ? exam.topics.map(t => `• ${t}`).join('<br>') 
+                        : 'No hay temas específicos';
+
+                    return `
+                        <div class="exam-alert">
+                            <h3>⚠️ ¡Examen Próximo en ${daysUntil} día(s)!</h3>
+                            <p><strong>${exam.name}</strong> - ${exam.category}</p>
+                            <p>📅 ${new Date(exam.date).toLocaleString()}</p>
+                            <p style="margin-top: 10px;"><strong>Necesitas estudiar:</strong></p>
+                            <p style="margin-top: 5px; font-size: 0.9em;">${topicsList}</p>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                alertDiv.innerHTML = '';
+            }
+
+            // Enviar notificaciones del sistema
+            if (Notification.permission === 'granted' && notificationSettings.examNotifications) {
+                exams.forEach(exam => {
+                    const timeUntil = exam.date - now;
+                    const daysUntil = Math.ceil(timeUntil / oneDayMs);
+
+                    // Notificación 3 días antes
+                    if (timeUntil <= threeDaysMs && timeUntil > (threeDaysMs - 60000) && !exam.notified3Days) {
+                        const topicsList = exam.topics.length > 0 
+                            ? '\n\nTemas: ' + exam.topics.join(', ')
+                            : '';
+                        
+                        new Notification(`⚠️ Examen en 3 días: ${exam.category}`, {
+                            body: `${exam.name}\nNecesitas estudiar estos temas:${topicsList}`,
+                            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">⚠️</text></svg>',
+                            requireInteraction: true,
+                            tag: `exam-3days-${exam.id}`
+                        });
+                        exam.notified3Days = true;
+                        saveData();
+                    }
+
+                    // Notificación el día del examen
+                    if (timeUntil <= oneDayMs && timeUntil > (oneDayMs - 60000) && !exam.notifiedDay) {
+                        new Notification(`🚨 ¡Examen HOY!: ${exam.category}`, {
+                            body: `${exam.name}\n${new Date(exam.date).toLocaleTimeString()}`,
+                            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">🚨</text></svg>',
+                            requireInteraction: true,
+                            tag: `exam-today-${exam.id}`
+                        });
+                        exam.notifiedDay = true;
+                        saveData();
+                    }
+                });
+            }
+        }
+
+        // Notificaciones
+        function requestNotificationPermission() {
+            if ('Notification' in window) {
+                if (Notification.permission === 'default') {
+                    Notification.requestPermission().then(permission => {
+                        if (permission === 'granted') {
+                            new Notification('🎉 Notificaciones Activadas', {
+                                body: 'Ahora recibirás recordatorios de tus tareas y exámenes.',
+                                icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">✅</text></svg>',
+                            });
+                        }
+                    });
+                } else if (Notification.permission === 'denied') {
+                    alert('Las notificaciones están bloqueadas. Por favor, habilítalas en la configuración de tu navegador para recibir recordatorios.');
+                }
+            } else {
+                alert('Tu navegador no soporta notificaciones del sistema.');
+            }
+        }
+
+        function setupNotifications() {
+            if (notificationInterval) clearInterval(notificationInterval);
+            if (examCheckInterval) clearInterval(examCheckInterval);
+
+            if (notificationSettings.enabled) {
+                checkPendingTasks();
+                notificationInterval = setInterval(() => {
+                    checkPendingTasks();
+                }, notificationSettings.hours * 60 * 60 * 1000);
+            }
+
+            if (notificationSettings.examNotifications) {
+                checkUpcomingExams();
+                examCheckInterval = setInterval(() => {
+                    checkUpcomingExams();
+                }, 60 * 60 * 1000); // Revisar cada hora
+            }
+        }
+
+        function checkPendingTasks() {
+            if (Notification.permission !== 'granted') return;
+
+            const pendingTasks = tasks.filter(t => !t.completed);
+            const overdueTasks = pendingTasks.filter(t => t.deadline && t.deadline < Date.now());
+
+            if (overdueTasks.length > 0) {
+                new Notification('⚠️ Tareas Vencidas', {
+                    body: `Tienes ${overdueTasks.length} tarea(s) vencida(s). ¡Revísalas pronto!`,
+                    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">⚠️</text></svg>',
+                    requireInteraction: true,
+                    tag: 'overdue-tasks'
+                });
+            } else if (pendingTasks.length > 0) {
+                new Notification('📋 Recordatorio de Tareas', {
+                    body: `Tienes ${pendingTasks.length} tarea(s) pendiente(s) por completar.`,
+                    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">📋</text></svg>',
+                    tag: 'pending-tasks'
+                });
+            }
+        }
+
+        function saveNotificationSettings() {
+            notificationSettings.hours = parseInt(document.getElementById('notificationHours').value);
+            notificationSettings.enabled = document.getElementById('enableNotifications').checked;
+            notificationSettings.examNotifications = document.getElementById('enableExamNotifications').checked;
+            saveData();
+            setupNotifications();
+            closeModal('notificationModal');
+            
+            if (Notification.permission === 'granted' && notificationSettings.enabled) {
+                new Notification('🔔 Configuración Guardada', {
+                    body: `Recibirás notificaciones cada ${notificationSettings.hours} hora(s).`,
+                    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">🔔</text></svg>',
+                });
+            } else {
+                alert('Configuración guardada');
+            }
+        }
+
+        // UI Helpers
+        function showView(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+            
+            if (viewId === 'examsView') {
+                renderExams();
+            }
+        }
+
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        function backToCategory() {
+            showView('categoryView');
+            renderTasks();
+            checkCompletion();
+        }
+
+        function updateCategorySelect() {
+            const select = document.getElementById('taskCategory');
+            select.innerHTML = '<option value="">Selecciona una categoría</option>' +
+                categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
+        }
+
+        // Cerrar modales al hacer click fuera
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        });
+
+        document.getElementById('imageModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('imageModal')) {
+                closeImageModal();
+            }
+        });
+
+        // Iniciar aplicación
+        init();
+    </script>
+</body>
+</html>
