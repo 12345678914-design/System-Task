@@ -1,10 +1,9 @@
-import { neon } from '@netlify/neon';
+import { neon } from '@neondatabase/serverless';
 
 export default async (req, context) => {
-  // Inicializar conexión a la base de datos
-  const sql = neon(process.env.NETLIFY_DATABASE_URL);
+  // Obtener la URL de la base de datos desde las variables de entorno
+  const sql = neon(process.env.DATABASE_URL || process.env.NETLIFY_DATABASE_URL);
   
-  // Solo permitir POST
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }
@@ -12,17 +11,23 @@ export default async (req, context) => {
   try {
     const { query, params } = await req.json();
     
-    // Ejecutar consulta
+    // Ejecutar la consulta
     const result = await sql(query, params);
     
     return new Response(JSON.stringify({ rows: result }), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
     });
     
   } catch (error) {
     console.error('Database error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      details: error.toString()
+    }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });
@@ -30,5 +35,5 @@ export default async (req, context) => {
 };
 
 export const config = {
-  path: '/api/db'
+  path: '/.netlify/functions/db'
 };
