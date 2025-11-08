@@ -1,0 +1,8 @@
+{
+  "name": "task-manager",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@netlify/neon": "^0.10.1"
+  }
+}
